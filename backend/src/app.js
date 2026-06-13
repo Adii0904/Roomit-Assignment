@@ -5,6 +5,8 @@ import cors from "cors";
 // importing the connectDB method
 import connectDB from "./config/db.js";
 
+import roomRoute from "./routes/room.routes.js";
+
 dotenv.config();
 console.log(process.env.MONGODB_URI);
 connectDB();
@@ -15,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // just for the checking the route;
-
+app.use("/api/rooms", roomRoute);
 app.get("/", (req, res) => {
   console.log("api hitted");
   res.status(200).json({
