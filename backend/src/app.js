@@ -11,12 +11,13 @@ connectDB();
 
 const app = express();
 
-app.use(cors);
+app.use(cors());
 app.use(express.json());
 
 // just for the checking the route;
 
-app.use("/", (req, res) => {
+app.get("/", (req, res) => {
+  console.log("api hitted");
   res.status(200).json({
     success: true,
     ok: true,
