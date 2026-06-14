@@ -5,6 +5,7 @@ import {
   roomAvaliablity,
   getUserBookings,
   cancelBooking,
+  rescheduleBooking,
 } from "../controllers/room.controller.js";
 
 const router = express.Router();
@@ -16,4 +17,5 @@ router.get("/:id/availability", roomAvaliablity);
 router.post("/bookings", createBooking);
 router.get("/bookings", getUserBookings);
 router.patch("/bookings/:id/cancel", cancelBooking);
+router.patch("/bookings/:id/reschedule", rescheduleBooking);
 export default router;

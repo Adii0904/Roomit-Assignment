@@ -119,11 +119,40 @@ export const createBooking = async (req, res) => {
 
     const slots = generateBookingSlots(date, startTime, endTime);
 
+    const existingBookings = await Booking.find({
+      roomId,
+      status: "confirmed",
+      startDateTime: {
+        $gte: dayjs(date).startOf("day").toDate(),
+        $lt: dayjs(date).endOf("day").toDate(),
+      },
+    });
+
     // booking start/end datetime
 
     const startDateTime = slots[0];
 
     const endDateTime = new Date(`${date}T${endTime}:00`);
+
+    // buffer  time system
+
+    // BUFFER VALIDATION
+
+    for (const existing of existingBookings) {
+      const blockedUntil = new Date(
+        existing.endDateTime.getTime() + room.bufferMinutes * 60 * 1000,
+      );
+
+      if (
+        startDateTime >= existing.endDateTime &&
+        startDateTime < blockedUntil
+      ) {
+        return res.status(409).json({
+          success: false,
+          message: "Room is in buffer period after previous booking",
+        });
+      }
+    }
 
     // create booking
 
@@ -267,6 +296,86 @@ export const cancelBooking = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Cancellation failed",
+    });
+  }
+};
+
+export const rescheduleBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { date, startTime, endTime, version } = req.body;
+
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    // Optimistic Locking
+
+    if (booking.version !== version) {
+      return res.status(409).json({
+        success: false,
+        message: "Booking changed. Please refresh.",
+      });
+    }
+
+    const slots = generateBookingSlots(date, startTime, endTime);
+
+    const startDateTime = slots[0];
+
+    const endDateTime = new Date(`${date}T${endTime}:00`);
+
+    // Purane slots hatao
+
+    await BookingSlot.deleteMany({
+      bookingId: booking._id,
+    });
+
+    const slotDocs = slots.map((slot) => ({
+      roomId: booking.roomId,
+      bookingId: booking._id,
+      slotStart: slot,
+    }));
+
+    try {
+      await BookingSlot.insertMany(slotDocs, {
+        ordered: true,
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: "New slot already booked",
+        });
+      }
+
+      throw error;
+    }
+
+    booking.startDateTime = startDateTime;
+
+    booking.endDateTime = endDateTime;
+
+    booking.version += 1;
+
+    await booking.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking rescheduled successfully",
+      booking,
+    });
+  } catch (error) {
+    console.log(`Error in rescheduleBooking: ${error.message}`);
+
+    return res.status(500).json({
+      success: false,
+      message: "Reschedule failed",
     });
   }
 };
