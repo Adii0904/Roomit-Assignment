@@ -55,15 +55,56 @@ export const roomAvaliablity = async (req, res) => {
       },
     });
 
+    // const availability = allSlots.map((slot) => {
+    //   const isBooked = bookedSlots.some((bookedSlot) => {
+    //     const bookedTime = dayjs(bookedSlot.slotStart).format("HH:mm");
+    //     return bookedTime === slot;
+    //   });
+
+    //   return {
+    //     time: slot,
+    //     available: !isBooked,
+    //   };
+    // });
+
+    // yaha add karna h
+
+    const blockedTimes = new Set();
+    const bookings = await Booking.find({
+      roomId: id,
+      status: "confirmed",
+      startDateTime: {
+        $gte: startOfDay,
+        $lt: endOfDay,
+      },
+    });
+
+    bookings.forEach((booking) => {
+      const bufferEnd = new Date(
+        booking.endDateTime.getTime() + room.bufferMinutes * 60 * 1000,
+      );
+
+      let current = new Date(booking.endDateTime);
+
+      while (current < bufferEnd) {
+        blockedTimes.add(dayjs(current).format("HH:mm"));
+
+        current = new Date(current.getTime() + 30 * 60 * 1000);
+      }
+    });
+
     const availability = allSlots.map((slot) => {
       const isBooked = bookedSlots.some((bookedSlot) => {
         const bookedTime = dayjs(bookedSlot.slotStart).format("HH:mm");
+
         return bookedTime === slot;
       });
 
+      const isBufferBlocked = blockedTimes.has(slot);
+
       return {
         time: slot,
-        available: !isBooked,
+        available: !isBooked && !isBufferBlocked,
       };
     });
 
