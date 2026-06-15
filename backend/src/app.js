@@ -60,6 +60,7 @@ app.get("/", (req, res) => {
 const port = process.env.PORT || 5000;
 
 // starting the server here;
-app.listen(port, () => {
-  console.log("server is started successfully");
+app.listen(port, "0.0.0.0", () => {
+  console.log(`🚀 Server started successfully on port ${port}`);
+  console.log(`📍 Listening on 0.0.0.0:${port}`);
 });
